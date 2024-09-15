@@ -46,21 +46,19 @@ class BitbakeLexer(RegexLexer):
             include('shell-function'),
             include('python-def'),
             include('add-task'),
-            (r'\s+', Text)
+            (r'\s+', Text),
         ],
-
         'variable-definition': [
-            (r'^(export)?(\s*)'                         # export
-             r'([\w.+/-]+(?:[:_][${}\w.+/-]+)?)'           # FILES_${PN}-dev
-             r'(?:(\[)([\w.+/-]+)(\]))*(\s*)'           # [md5sum]
-             r'([:+.]=|=[+.]|\?\??=|=)(\s*)',           # += 
-                bygroups(Keyword.Type, Text, 
-                         Name.Variable, 
-                         Punctuation, Name.Attribute, Punctuation, Text, 
+            (r'^(export)?(\s*)'  # export (optional)
+             r'([\w.+/-]+(?:[:_][${}\w.+/-]+)?)'  # FILES_${PN}-dev
+             r'(?:(\[)([\w.+/-]+)(\]))*(\s*)'  # [md5sum] (optional)
+             r'([:+.]=|=[+.]|\?\??=|=)(\s*)',  # +=, =+, ?=, =
+                bygroups(Keyword.Type, Text,
+                         Name.Variable,
+                         Punctuation, Name.Attribute, Punctuation, Text,
                          Operator, Text),
                 'string'),
         ],
-
         'string': [
             (r'"', String, 'string-body'),
         ],
@@ -70,58 +68,57 @@ class BitbakeLexer(RegexLexer):
             include('python-expansion'),
             (r'\\\n', String.Escape),
             (r'"', String, '#pop'),
-            (r'[^"\$\\]*', String),
+            (r'[^"\$\\]+', String),
+            (r'\$', String),
         ],
-
         'comment': [
             (r'^\s*#', Comment, 'comment-body'),
+            (r'\$\{.*?\}', Comment),
         ],
         'comment-body': [
             (r'(\s*)(TODO|FIXME|XXX)', bygroups(Text, Generic.Emph)),
-            (r'.*\n', Comment, '#pop'),
+            (r'(#.*)', Comment, '#pop'),
         ],
-
         'variable-expansion': [
-            (r'\$\{[\w.+/-]+\}', Comment.PreProc),
+            (r'\$\{[\w.+/-]+\}', Name.Variable),
+            (r'\$\{@.*?\}', Name.Function),
+            (r'\$\{[^\}]*?\}', Name.Variable),
         ],
-
         'python-expansion': [
-            (r'\$\{@', Comment.PreProc, 'python-expansion-body'),
+            (r'\$\{@', Name.Function, 'python-expansion-body'),
         ],
         'python-expansion-body': [
-            (r'\}', Comment.PreProc, '#pop'),
+            (r'\}', Name.Function, '#pop'),
             include('variable-expansion'),
             (r'\\\n', String.Escape),
             (r'.*?(?=\$\{|\}|\\\n)', using(PythonLexer)),
         ],
-
         'shell-function': [
             (r'^(fakeroot)?(\s*)(?:(do_fetch|do_unpack|do_patch|do_configure|'
              r'do_compile|do_populate_sysroot|do_stage|do_install|do_package|'
              r'do_package_write)|([:_\w${}-]+))(\s*)(\(\))(\s*)(\{)',
-                bygroups(Keyword.Type, Text, Name.Builtin.Pseudo, Name.Function, 
+                bygroups(Keyword.Type, Text, Name.Builtin.Pseudo, Name.Function,
                          Text, Punctuation, Text, Punctuation),
                 'shell-function-body'),
         ],
         'shell-function-body': [
             (r'^(\s*)(\})(\s*\n)', bygroups(Text, Punctuation, Text), '#pop'),
-            (r'.*\n', using(BashLexer)),
+            (r'.*\n', using(PythonLexer)),
         ],
 
         'python-function': [
-            (r'^(python)(\s+)(?:(do_fetch|do_unpack|do_patch|do_configure|'
-             r'do_compile|do_populate_sysroot|do_stage|do_install|do_package|'
-             r'do_package_write)|([:_\w${}-]+))?(\s*)(\(\))(\s*)(\{)',
-                bygroups(Keyword.Type, Text, Name.Builtin.Pseudo, Name.Function, 
-                         Text, Punctuation, Text, Punctuation),
+            (r'^(python)(\s+)([_\w${}-]+)?(\s*)(\(\))(\s*)(\{)',
+                bygroups(Keyword.Type, Text, Name.Function, Text, Punctuation, Text, Punctuation),
                 'python-function-body'),
         ],
         'python-function-body': [
-            (r'^(\s*)(\})(\s*\n)', bygroups(Text, Punctuation, Text), '#pop'),
+            (r'\$\{[\w.+/-]+\}', Name.Variable),
+            (r'\$\{@.*?\}', Name.Function),
             include('variable-expansion'),
+            (r'^(\s*)(\})(\s*\n)', bygroups(Text, Punctuation, Text), '#pop'),
             (r'.*?(?:(?=\$\{)|\n)', using(PythonLexer)),
+            include('comment'),
         ],
-
         'python-def': [
             (r'^(?=def\s).*\n', using(PythonLexer), 'python-def-body'),
         ],
@@ -130,15 +127,14 @@ class BitbakeLexer(RegexLexer):
             include('variable-expansion'),
             (r'.*?(?:(?=\$\{)|\n)', using(PythonLexer)),
         ],
-
         'include': [
-            (r'^(\s*)(include|require)(\s*)', 
-                bygroups(Text, Keyword.Namespace, Text), 
+            (r'^(\s*)(include|require)(\s*)',
+                bygroups(Text, Keyword.Namespace, Text),
                 'include-body'),
         ],
         'inherit': [
-            (r'^(\s*)(inherit)(\s*)', 
-                bygroups(Text, Keyword.Namespace, Text), 
+            (r'^(\s*)(inherit)(\s*)',
+                bygroups(Text, Keyword.Namespace, Text),
                 'inherit-body'),
         ],
         'include-body': [
@@ -153,7 +149,6 @@ class BitbakeLexer(RegexLexer):
             (r'\n', Text, '#pop'),
             (r'\s', Text),
         ],
-
         'add-task': [
             (r'addtask|addhandler|EXPORT_FUNCTIONS', Keyword, 'add-task-body'),
         ],
@@ -167,4 +162,3 @@ class BitbakeLexer(RegexLexer):
             (r'\s+', Text),
         ],
     }
-
